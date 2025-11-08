@@ -101,13 +101,12 @@ ChaosEngine resources reference ChaosExperiment templates that define specific f
 The ChaosCenter Portal provides a visual workflow builder for composing complex chaos scenarios. You can chain multiple experiments together, define execution order, and specify success criteria for each step. The Portal includes a dashboard showing resilience scores calculated from experiment outcomes, historical trend graphs, and detailed logs from past runs. It integrates with Prometheus for metrics collection and can send notifications through webhooks when experiments fail.
 
 **Key Resources:**
-- [Principles of Chaos Engineering](https://principlesofchaos.org/)
-- [LitmusChaos Documentation](https://litmuschaos.io/)
+- [What is chaos engineering?](https://www.ibm.com/think/topics/chaos-engineering)
 - [Google SRE Book - Testing for Reliability](https://sre.google/sre-book/testing-reliability/)
 
 **Video Tutorials:**
-- [Chaos Engineering Explained (8 min)](https://www.youtube.com/watch?v=CloLCLbVDJY) - IBM Technology
-- [Introduction to LitmusChaos (15 min)](https://www.youtube.com/watch?v=rDQ9XKbSJIc) - CNCF
+- [What is Chaos Engineering? (10 min)](https://www.youtube.com/watch?v=NxQrTGGO-Tc) - Harness
+- [Engineering for Chaos: Preparing for Disaster (10 min)](https://www.youtube.com/watch?v=BasOy54QGKo) - TEDx Talks
 
 ---
 
