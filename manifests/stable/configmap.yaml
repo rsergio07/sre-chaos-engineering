@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-content
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Chaos Engineering Target</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #e8f5e8; }
+            .status { color: #2d5a3d; font-size: 1.5em; margin: 20px 0; }
+            .info { background: #d4edda; padding: 15px; border-radius: 5px; display: inline-block; }
+        </style>
+    </head>
+    <body>
+        <h1>Chaos Engineering Target Application</h1>
+        <div class="status">Status: STABLE</div>
+        <div class="info">
+            <strong>Version:</strong> 1.0-stable<br>
+            <strong>Purpose:</strong> Testing resilience under chaos<br>
+            <strong>Timestamp:</strong> <span id="time"></span>
+        </div>
+        <script>
+            document.getElementById('time').textContent = new Date().toLocaleString();
+        </script>
+    </body>
+    </html>

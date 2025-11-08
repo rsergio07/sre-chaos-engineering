@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaos-target-app
+  labels:
+    app: chaos-target-app
+    version: unstable
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: chaos-target-app
+  template:
+    metadata:
+      labels:
+        app: chaos-target-app
+        version: unstable
+    spec:
+      containers:
+      - name: app
+        image: nginx:nonexistent-tag  # This will cause ImagePullBackOff
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: content
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+      volumes:
+      - name: content
+        configMap:
+          name: app-content-unstable

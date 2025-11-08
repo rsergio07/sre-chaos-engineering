@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-content-unstable
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Chaos Engineering Target - UNSTABLE</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #ffe6e6; }
+            .status { color: #d63384; font-size: 1.5em; margin: 20px 0; }
+            .info { background: #f8d7da; padding: 15px; border-radius: 5px; display: inline-block; }
+        </style>
+    </head>
+    <body>
+        <h1>Chaos Engineering Target - BROKEN</h1>
+        <div class="status">Status: UNSTABLE</div>
+        <div class="info">
+            <strong>Version:</strong> 2.0-unstable<br>
+            <strong>Issue:</strong> Image pull failure<br>
+            <strong>Action:</strong> Should rollback immediately
+        </div>
+    </body>
+    </html>
