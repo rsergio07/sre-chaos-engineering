@@ -58,7 +58,7 @@ By completing this track, you will:
 
 Your team reviewed Friday's rollback incident and recognized a pattern: most production issues occur during Friday afternoon deployments when the team is least prepared for weekend on-call. Your manager asks, "How can we test our rollback procedures every Friday without requiring engineer time and without causing actual outages?"
 
-This is where automated chaos engineering using YAML definitions provides the answer. Instead of using a web UI (LitmusChaos Portal), you'll define chaos experiments as version-controlled YAML files. This Infrastructure as Code approach means experiments are:
+This is where automated chaos engineering using YAML definitions provides the answer. You'll define chaos experiments as version-controlled YAML files. This Infrastructure as Code approach means experiments are:
 - **Reproducible:** Exact same conditions every execution
 - **Version-controlled:** Track experiment changes in Git
 - **Schedulable:** Run via CI/CD or Kubernetes CronJobs
