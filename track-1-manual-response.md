@@ -306,26 +306,32 @@ Chaos completed at: Fri Nov  8 14:57:04 CST 2024
 
 ### Analyze Chaos Impact
 
-After chaos completes, verify system returned to stable state:
+| Metric | Observation |
+| :--- | :--- |
+| **Response Time (Latency)** | Highly variable, spiking to several seconds immediately after each pod deletion. |
+| **Availability** | Degradation observed; the service experienced brief periods of total unresponsiveness (`HTTP 000000`). This happened because the targeted pod that was holding the `kubectl port-forward` connection was forcefully terminated by the chaos injection. |
+| **Pod Status** | All deleted pods were rapidly terminated and recreated by the ReplicaSet, but the new pods took 5-10 seconds to transition to the `Ready` state. |
 
-```bash
-# Check all pods are Running
-kubectl get pods -l app=chaos-target-app
+**Key Observation: Resilience vs. Access Fragility**
 
-# Check restart counts (should still be 0)
-kubectl get pods -l app=chaos-target-app -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount
+Kubernetes' core **self-healing mechanisms** (the ReplicaSet) worked exactly as designed: it detected the missing pod and immediately created a replacement. This ensures the service's eventual availability.
 
-# Verify service has three endpoints
-kubectl get endpoints chaos-target-service
-```
+However, the **service was degraded**, and the external monitoring connection failed. This highlights that while the *service itself* recovers quickly, **the tools and access methods used for monitoring can be the most fragile component** during a chaos event. This manual observation serves as the baseline for our automated test, where we expect better metrics.
 
-**Expected results:**
-- Three pods in `Running` state
-- All pods showing `RESTARTS: 0` (pods were deleted, not restarted)
-- Service has three healthy endpoints
-- Availability monitor shows mostly HTTP 200
+#### Recovery Step
 
-**Key Observation:** Kubernetes self-healing worked. Despite continuous pod deletion, the service maintained partial availability and automatically recovered without human intervention. However, there were brief periods of degraded service.
+The service is running, but the local connection is dead. To restore the monitoring connection, we must find a new, healthy pod and run a fresh port-forward command.
+
+1.  **Find a New, Healthy Pod:**
+    ```bash
+    kubectl get pods -l app=chaos-target-app --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}'
+    ```
+
+2.  **Restart Port Forward (Replace `<POD_NAME>` with the output from Step 1):**
+    ```bash
+    kubectl port-forward <POD_NAME> 8080:80 &
+    ```
+Running the port-forward again will immediately restore the connection and the service monitor should go back to showing healthy `HTTP 200` responses, confirming the successful self-healing.
 
 ---
 
