@@ -128,37 +128,52 @@ probe:
 8. ChaosResult contains verdict (Pass/Fail) and detailed metrics
 ````
 
-### View Existing Experiments
-````bash
-# List installed chaos experiments
-kubectl get chaosexperiment -n default
+### Apply Chaos RBAC Permissions
 
-# View pod-delete experiment definition
-kubectl get chaosexperiment pod-delete -n default -o yaml | less
-````
+This creates the necessary ServiceAccount, ClusterRole, and ClusterRoleBinding.
 
-**Key observation:** The ChaosExperiment CRD defines HOW to inject a specific fault. The ChaosEngine CRD defines WHEN and WHERE to inject it.
+```bash
+# Apply the ServiceAccount, ClusterRole, and ClusterRoleBinding using your file name
+kubectl apply -f chaos-experiments/litmus-rbac.yaml
+```
 
-### Inspect Your Chaos Infrastructure
-````bash
-# Verify operator is running
-kubectl get pods -n litmus -l app.kubernetes.io/component=operator
+### Apply Chaos Experiment Definitions
 
-# Check RBAC is configured
+This makes the `pod-delete` and `pod-cpu-hog` chaos types available for use in the `ChaosEngine` manifest.
+
+```bash
+# Apply the ChaosExperiment CRDs using your file name
+kubectl apply -f chaos-experiments/install-experiments.yaml
+```
+
+### Final Verification
+
+After applying these two files, your system should be ready.
+
+```bash
+# Verify RBAC (Should now show resources are created)
 kubectl get sa litmus-admin -n default
 kubectl get clusterrole litmus-admin
 kubectl get clusterrolebinding litmus-admin
 
-# List available chaos experiments
+# Verify Experiments (Should show the two experiments)
 kubectl get chaosexperiment -n default
-````
+```
 
 **Expected output:**
-````
-NAME           AGE
-pod-delete     10m
-pod-cpu-hog    10m
-````
+```
+NAME           SECRETS   AGE
+litmus-admin   0         7m1s
+NAME           CREATED AT
+litmus-admin   2025-11-09T19:12:37Z
+NAME           ROLE                       AGE
+litmus-admin   ClusterRole/litmus-admin   7m31s
+NAME          AGE
+pod-cpu-hog   7m46s
+pod-delete    7m46s
+```
+
+Once the experiments show up, you can successfully proceed to **Exercise 2: Execute Pod Delete Chaos**.
 
 ---
 
