@@ -17,3 +17,6 @@ Thumbs.db
 
 # Keep reports directory structure but ignore some generated files
 !reports/.gitkeep
+
+# Personal utility scripts
+scripts/reset-k8s.sh
