@@ -292,7 +292,7 @@ After chaos completes, verify the application recovered:
 kubectl get pods -l app=chaos-target-app
 
 # Check restart counts (should still be 0 - pods were deleted, not restarted)
-kubectl get pods -l app=chaos-target-app -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount
+kubectl get pods -l app=chaos-target-app -o custom-columns='NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount'
 
 # Verify service has healthy endpoints
 kubectl get endpoints chaos-target-service
