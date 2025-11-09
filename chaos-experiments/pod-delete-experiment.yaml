@@ -1,0 +1,50 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: pod-delete-chaos
+  namespace: default
+spec:
+  appinfo:
+    appns: 'default'
+    applabel: 'app=chaos-target-app'
+    appkind: 'deployment'
+  # ChaosServiceAccount is used for RBAC
+  chaosServiceAccount: litmus-admin
+  engineState: 'active'
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            # Total duration of chaos injection (seconds)
+            - name: TOTAL_CHAOS_DURATION
+              value: '60'
+            
+            # Time between each pod deletion (seconds)
+            - name: CHAOS_INTERVAL
+              value: '15'
+            
+            # Force delete without grace period
+            - name: FORCE
+              value: 'true'
+            
+            # Number of pods to delete (empty = random 1 pod)
+            - name: PODS_AFFECTED_PERC
+              value: ''
+        
+        probe:
+          # HTTP probe to check service availability
+          - name: check-application-availability
+            type: httpProbe
+            mode: Continuous
+            runProperties:
+              probeTimeout: '5'
+              retry: 3
+              interval: '5'
+              probePollingInterval: '2'
+            httpProbe/inputs:
+              url: http://chaos-target-service.default.svc.cluster.local:80
+              method:
+                get:
+                  criteria: ==
+                  responseCode: "200"

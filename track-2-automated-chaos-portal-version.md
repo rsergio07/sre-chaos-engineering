@@ -1051,3 +1051,5 @@ In the final phase, you'll:
 - Receive recommendations for implementing chaos in production
 
 **Key takeaway:** Manual chaos teaches you HOW systems fail. Automated chaos VALIDATES that they recover reliably. Both approaches have value in a mature SRE practice.
+---
+**NOTE:** This version requires LitmusChaos Portal. Due to ARM64 MongoDB compatibility issues, use `track-2-automated-chaos.md` instead (YAML-based approach).

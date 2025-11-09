@@ -1,0 +1,33 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: pod-delete-observable
+  namespace: default
+spec:
+  appinfo:
+    appns: 'default'
+    applabel: 'app=chaos-target-app'
+    appkind: 'deployment'
+  chaosServiceAccount: litmus-admin
+  engineState: 'active'
+  # Keep chaos resources after completion for inspection
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            # Longer duration so you can observe
+            - name: TOTAL_CHAOS_DURATION
+              value: '90'
+            
+            # More frequent deletions
+            - name: CHAOS_INTERVAL
+              value: '10'
+            
+            - name: FORCE
+              value: 'true'
+            
+            # Explicitly target 1 pod at a time
+            - name: PODS_AFFECTED_PERC
+              value: '33'
