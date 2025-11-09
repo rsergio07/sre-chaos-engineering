@@ -320,18 +320,14 @@ However, the **service was degraded**, and the external monitoring connection fa
 
 #### Recovery Step
 
-The service is running, but the local connection is dead. To restore the monitoring connection, we must find a new, healthy pod and run a fresh port-forward command.
+The service is running, but the local connection is dead. To restore a robust monitoring connection that will survive future pod deletions, we should forward the port directly to the Service resource.
 
-1.  **Find a New, Healthy Pod:**
+- **Start Port Forward:**
     ```bash
-    kubectl get pods -l app=chaos-target-app --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}'
+    kubectl port-forward svc/chaos-target-service 8080:80 --address 0.0.0.0 &
     ```
 
-2.  **Restart Port Forward (Replace `<POD_NAME>` with the output from Step 1):**
-    ```bash
-    kubectl port-forward <POD_NAME> 8080:80 &
-    ```
-Running the port-forward again will immediately restore the connection and the service monitor should go back to showing healthy `HTTP 200` responses, confirming the successful self-healing.
+This command will automatically reconnect to a healthy backend pod when a pod is deleted, ensuring a stable connection for continuous monitoring.
 
 ---
 
