@@ -20,3 +20,6 @@ Thumbs.db
 
 # Personal utility scripts
 scripts/reset-k8s.sh
+
+# Personal utility scripts
+scripts/reset-k8s.sh
