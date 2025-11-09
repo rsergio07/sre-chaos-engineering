@@ -38,9 +38,9 @@ In traditional software development, teams test that systems work under ideal co
 
 **Manual incident response** teaches you how Kubernetes self-healing works, how to measure Mean Time to Recovery (MTTR), and how to use observability tools under pressure. These are essential foundational skills. However, manual response is reactive—you only discover weaknesses when real failures happen, often at the worst possible times.
 
-**Automated chaos engineering** shifts this paradigm. Instead of waiting for production failures, you proactively inject controlled faults into your systems on a regular schedule. You define success criteria in advance, measure resilience scores automatically, and build confidence that your recovery procedures work long before customers are affected. This is the difference between junior SREs who respond to incidents and senior SREs who prevent incidents through systematic testing.
+**Automated chaos engineering** shifts this paradigm. Instead of waiting for production failures, you proactively inject controlled faults into your systems on a regular schedule. You define success criteria in advance using YAML-based ChaosEngine definitions, measure resilience scores automatically through structured ChaosResult resources, and build confidence that your recovery procedures work long before customers are affected. This is the difference between junior SREs who respond to incidents and senior SREs who prevent incidents through systematic testing.
 
-This lab demonstrates both approaches using the same target application and the same Kubernetes cluster. You'll experience firsthand why industry-leading SRE teams invest in dedicated chaos engineering platforms, and you'll gain practical skills with both native Kubernetes tools and production-grade chaos frameworks.
+This lab demonstrates both approaches using the same target application and the same Kubernetes cluster. You'll experience firsthand why industry-leading SRE teams invest in chaos engineering practices, and you'll gain practical skills with both native Kubernetes tools and production-grade chaos frameworks using Infrastructure as Code principles.
 
 ---
 
@@ -50,11 +50,42 @@ By completing this lab, you will be able to:
 
 1. Execute emergency rollback procedures under simulated production stress using kubectl and the Kubernetes Dashboard, observing pod lifecycle transitions and manually measuring MTTR.
 
-2. Design and schedule automated chaos experiments using LitmusChaos Portal, defining hypothesis-driven success criteria and enabling repeatable resilience validation.
+2. Design and execute automated chaos experiments using LitmusChaos ChaosEngine YAML definitions, implementing hypothesis-driven success criteria through declarative Infrastructure as Code.
 
-3. Compare manual versus automated chaos approaches by generating a comparative analysis that quantifies differences in measurement accuracy, operational overhead, and reproducibility.
+3. Compare manual versus automated chaos approaches by generating a comparative analysis that quantifies differences in measurement accuracy, operational overhead, reproducibility, and version control benefits.
 
-4. Apply production-ready chaos engineering practices by understanding how senior SRE teams build confidence through continuous resilience testing rather than reactive firefighting.
+4. Apply production-ready chaos engineering practices by understanding how senior SRE teams build confidence through continuous resilience testing using GitOps workflows rather than reactive firefighting.
+
+---
+
+## Prerequisites
+
+Before starting this lab, you should have:
+
+**Required Knowledge:**
+- Basic Kubernetes concepts (pods, deployments, services)
+- Familiarity with kubectl commands
+- Understanding of container orchestration fundamentals
+- Basic YAML syntax and structure
+
+**Required Tools:**
+- **Minikube** or similar local Kubernetes cluster
+- **kubectl** CLI tool configured
+- **Helm** v3+ (for installing LitmusChaos operator)
+- **Git** for version control
+- Terminal with bash or zsh
+- Text editor (vim, nano, VS Code, etc.)
+
+**Recommended But Optional:**
+- Docker Desktop or similar container runtime
+- Basic understanding of Kubernetes operators
+- Familiarity with Custom Resource Definitions (CRDs)
+
+**System Requirements:**
+- 4 CPU cores minimum (8 recommended)
+- 8 GB RAM minimum (16 GB recommended)
+- 20 GB free disk space
+- Stable internet connection for pulling images
 
 ---
 
@@ -76,9 +107,9 @@ Manual incident response is the foundational skill every SRE develops early in t
 
 However, manual response has inherent limitations. You only test recovery procedures when real failures occur, discovering weaknesses at the worst possible moment when customers are impacted. Manual MTTR measurement is imprecise due to human reaction time and distractions during high-stress incidents. Reproducing the exact conditions of a past incident is difficult, making it hard to verify that improvements actually reduced MTTR. Most critically, manual testing doesn't scale—as infrastructure complexity grows, you cannot feasibly test every failure mode through ad-hoc experimentation.
 
-Automated chaos engineering flips this model. Instead of waiting for failures, you intentionally inject faults on a schedule—perhaps every Friday afternoon, or after every deployment. You define success criteria before the experiment runs: "the system will recover in under 60 seconds with zero request failures." The chaos platform executes the experiment, measures outcomes automatically, and generates a pass/fail report. You build a historical database of resilience metrics that shows whether changes improved or degraded system behavior.
+Automated chaos engineering using YAML-based definitions flips this model. Instead of waiting for failures, you intentionally inject faults on a schedule by applying ChaosEngine custom resources—perhaps via CronJob, or after every deployment through CI/CD pipelines. You define success criteria before the experiment runs using declarative probes: "the system will maintain 95% availability with sub-2-second response times." The LitmusChaos operator executes the experiment, measures outcomes automatically through continuous probes, and generates structured ChaosResult resources with pass/fail verdicts. You build a historical database of resilience metrics stored as version-controlled YAML that shows whether changes improved or degraded system behavior.
 
-The transition from manual to automated chaos represents operational maturity. Junior SREs respond to incidents reactively. Senior SREs design systems that are tested proactively. The automation doesn't replace human expertise—it amplifies it by providing consistent, reproducible data that informs better architectural decisions and reveals weaknesses before they cause customer impact.
+The transition from manual to automated chaos represents operational maturity. Junior SREs respond to incidents reactively. Senior SREs design systems that are tested proactively using Infrastructure as Code principles. The automation doesn't replace human expertise—it amplifies it by providing consistent, reproducible data that informs better architectural decisions and reveals weaknesses before they cause customer impact.
 
 ### Chaos Engineering Principles
 
@@ -86,23 +117,24 @@ Chaos engineering emerged from Netflix's experience operating large-scale distri
 
 Modern chaos engineering follows four key principles. First, define steady state—establish measurable indicators of normal system behavior like request latency, error rates, and throughput. Second, hypothesize that steady state will continue in both control and experimental groups. Third, introduce variables that reflect real-world events like server crashes, network latency, or resource exhaustion. Fourth, try to disprove the hypothesis by looking for differences in steady state between control and experimental groups.
 
-The scientific method underlies chaos engineering. You form a hypothesis about system behavior under specific failure conditions. You design an experiment with measurable outcomes. You execute the experiment in a controlled manner. You analyze results objectively to determine whether your hypothesis was correct. If the system behaves as expected, you gain confidence. If it doesn't, you've discovered a weakness before customers experienced it.
+The scientific method underlies chaos engineering. You form a hypothesis about system behavior under specific failure conditions. You design an experiment with measurable outcomes using ChaosEngine YAML. You execute the experiment in a controlled manner through the LitmusChaos operator. You analyze results objectively from ChaosResult resources to determine whether your hypothesis was correct. If the system behaves as expected, you gain confidence. If it doesn't, you've discovered a weakness before customers experienced it.
 
-Blast radius control is essential. Start with the smallest possible scope—a single pod in a development environment. Gradually expand to larger scopes as confidence grows—multiple pods, entire services, production environments. Always have abort mechanisms ready. Define maximum acceptable impact and halt experiments if that threshold is exceeded. The goal is learning, not causing actual outages.
+Blast radius control is essential. Start with the smallest possible scope—a single pod in a development environment using `PODS_AFFECTED_PERC: '33'`. Gradually expand to larger scopes as confidence grows—multiple pods, entire services, production environments. Always have abort mechanisms ready. Define maximum acceptable impact in your probe success criteria and halt experiments if that threshold is exceeded. The goal is learning, not causing actual outages.
 
 ### LitmusChaos Architecture
 
-LitmusChaos is an open-source chaos engineering platform designed specifically for Kubernetes environments. It consists of two main components: the Chaos Operator and the ChaosCenter Portal. The operator runs as a set of controllers watching for ChaosEngine custom resources, while the Portal provides a web interface for designing experiments and viewing results.
+LitmusChaos is an open-source chaos engineering platform designed specifically for Kubernetes environments. It uses Kubernetes-native patterns including Custom Resource Definitions (CRDs) and the operator pattern to execute chaos experiments declaratively. This lab uses the core LitmusChaos operator with YAML-based experiment definitions, following Infrastructure as Code principles.
 
-The Chaos Operator executes fault injection based on declarative YAML definitions. When you create a ChaosEngine resource, the operator reads its specification, identifies target pods using label selectors, and applies the specified chaos fault. Faults are implemented as Kubernetes Jobs that run chaos experiment containers. These containers use techniques like deleting pods, injecting CPU/memory stress, or manipulating network packets to simulate failures.
+The Chaos Operator runs as a set of controllers watching for ChaosEngine custom resources. When you create a ChaosEngine resource using `kubectl apply -f`, the operator reads its specification, identifies target pods using label selectors, and applies the specified chaos fault. Faults are implemented as Kubernetes Jobs that run chaos experiment containers. These containers use techniques like deleting pods, injecting CPU/memory stress, or manipulating network packets to simulate failures.
 
-ChaosEngine resources reference ChaosExperiment templates that define specific fault types. LitmusChaos includes a hub of pre-built experiments covering common failure scenarios—pod deletion, resource exhaustion, network latency, disk fill, and many others. Each experiment has configurable parameters controlling intensity, duration, and target selection. The operator monitors experiment execution and records results in ChaosResult custom resources.
+ChaosEngine resources reference ChaosExperiment templates that define specific fault types. LitmusChaos includes a library of pre-built experiments covering common failure scenarios—pod deletion, resource exhaustion, network latency, disk fill, and many others. Each experiment has configurable parameters controlling intensity, duration, and target selection using environment variables in the YAML specification. The operator monitors experiment execution and records results in ChaosResult custom resources.
 
-The ChaosCenter Portal provides a visual workflow builder for composing complex chaos scenarios. You can chain multiple experiments together, define execution order, and specify success criteria for each step. The Portal includes a dashboard showing resilience scores calculated from experiment outcomes, historical trend graphs, and detailed logs from past runs. It integrates with Prometheus for metrics collection and can send notifications through webhooks when experiments fail.
+---
 
 **Key Resources:**
 - [What is chaos engineering?](https://www.ibm.com/think/topics/chaos-engineering)
 - [Google SRE Book - Testing for Reliability](https://sre.google/sre-book/testing-reliability/)
+- [LitmusChaos Documentation](https://docs.litmuschaos.io/)
 
 **Video Tutorials:**
 - [What is Chaos Engineering? (10 min)](https://www.youtube.com/watch?v=NxQrTGGO-Tc) - Harness
@@ -114,7 +146,7 @@ The ChaosCenter Portal provides a visual workflow builder for composing complex 
 
 ### Phase 1: Environment Setup
 
-**Objective:** Deploy the chaos target application and install both Kubernetes Dashboard and LitmusChaos Portal to establish infrastructure for manual and automated resilience testing.
+**Objective:** Deploy the chaos target application and install the LitmusChaos operator to establish infrastructure for manual and automated resilience testing using YAML-based experiments.
 
 See [phase-1-environment-setup.md](phase-1-environment-setup.md) for complete instructions.
 
@@ -126,13 +158,13 @@ See [track-1-manual-response.md](track-1-manual-response.md) for complete instru
 
 ### Track 2: Scheduled Resilience Testing (Automated Chaos)
 
-**Objective:** Design and execute automated chaos experiments using LitmusChaos Portal, defining hypothesis-driven success criteria and measuring resilience through CPU stress testing.
+**Objective:** Design and execute automated chaos experiments using ChaosEngine YAML definitions, implementing hypothesis-driven success criteria through Infrastructure as Code and measuring resilience through continuous probes.
 
 See [track-2-automated-chaos.md](track-2-automated-chaos.md) for complete instructions.
 
 ### Final Phase: Comparative Analysis & Cleanup
 
-**Objective:** Compare manual versus automated approaches by analyzing MTTR measurements, operational overhead, and reproducibility, then generate a comprehensive comparison report and clean up all infrastructure.
+**Objective:** Compare manual versus automated approaches by analyzing MTTR measurements, operational overhead, version control benefits, and reproducibility, then generate a comprehensive comparison report and clean up all infrastructure.
 
 See [final-phase-analysis.md](final-phase-analysis.md) for complete instructions.
 
