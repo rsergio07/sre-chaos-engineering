@@ -1,0 +1,19 @@
+# Generated during lab execution
+reports/*.txt
+reports/*final-state*
+
+# Kubernetes temporary files
+*.tmp
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep reports directory structure but ignore some generated files
+!reports/.gitkeep
