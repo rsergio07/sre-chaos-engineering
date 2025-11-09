@@ -7,9 +7,8 @@
 - [Scenario Context](#scenario-context)
 - [Exercise 1: Understand ChaosEngine Architecture](#exercise-1-understand-chaosengine-architecture)
 - [Exercise 2: Execute Pod Delete Chaos](#exercise-2-execute-pod-delete-chaos)
-- [Exercise 3: Execute CPU Stress Chaos](#exercise-3-execute-cpu-stress-chaos)
-- [Exercise 4: Analyze Automated Results](#exercise-4-analyze-automated-results)
-- [Exercise 5: Compare with Manual Approach](#exercise-5-compare-with-manual-approach)
+- [Exercise 3: Analyze Automated Results](#exercise-3-analyze-automated-results)
+- [Exercise 4: Compare with Manual Approach](#exercise-4-compare-with-manual-approach)
 - [Reflection Questions](#reflection-questions)
 
 ---
@@ -39,13 +38,11 @@ By completing this track, you will:
 
 2. Execute automated pod deletion chaos experiments that run without manual intervention, using the LitmusChaos operator to handle fault injection and recovery measurement.
 
-3. Design and execute CPU stress experiments with continuous HTTP probes that validate service availability throughout the chaos period.
+3. Analyze ChaosResult custom resources containing structured experiment outcomes, probe success rates, and detailed execution logs.
 
-4. Analyze ChaosResult custom resources containing structured experiment outcomes, probe success rates, and detailed execution logs.
+4. Compare automated YAML-based chaos against manual kubectl approaches to quantify differences in reproducibility, measurement precision, and operational overhead.
 
-5. Compare automated YAML-based chaos against manual kubectl approaches to quantify differences in reproducibility, measurement precision, and operational overhead.
-
-6. Apply Infrastructure as Code principles to chaos engineering by version-controlling experiment definitions and treating resilience testing as code.
+5. Apply Infrastructure as Code principles to chaos engineering by version-controlling experiment definitions and treating resilience testing as code.
 
 ---
 
@@ -139,7 +136,7 @@ kubectl apply -f chaos-experiments/litmus-rbac.yaml
 
 ### Apply Chaos Experiment Definitions
 
-This makes the `pod-delete` and `pod-cpu-hog` chaos types available for use in the `ChaosEngine` manifest.
+This makes the `pod-delete` chaos type available for use in the `ChaosEngine` manifest.
 
 ```bash
 # Apply the ChaosExperiment CRDs using your file name
@@ -156,7 +153,7 @@ kubectl get sa litmus-admin -n default
 kubectl get clusterrole litmus-admin
 kubectl get clusterrolebinding litmus-admin
 
-# Verify Experiments (Should show the two experiments)
+# Verify Experiments (Should show the experiment)
 kubectl get chaosexperiment -n default
 ```
 
@@ -169,11 +166,10 @@ litmus-admin   2025-11-09T19:12:37Z
 NAME           ROLE                       AGE
 litmus-admin   ClusterRole/litmus-admin   7m31s
 NAME          AGE
-pod-cpu-hog   7m46s
 pod-delete    7m46s
 ```
 
-Once the experiments show up, you can successfully proceed to **Exercise 2: Execute Pod Delete Chaos**.
+Once the experiment shows up, you can successfully proceed to **Exercise 2: Execute Pod Delete Chaos**.
 
 ---
 
@@ -305,136 +301,9 @@ kubectl get endpoints chaos-target-service
 
 ---
 
-## Exercise 3: Execute CPU Stress Chaos
+## Exercise 3: Analyze Automated Results
 
-Now run a more complex experiment that stresses CPU resources while continuously validating service availability through HTTP probes.
-
-### Review CPU Stress Experiment
-````bash
-# View the CPU stress experiment definition
-cat chaos-experiments/cpu-stress-experiment.yaml
-````
-
-**Key differences from pod deletion:**
-
-**1. Different fault type:**
-````yaml
-experiments:
-  - name: pod-cpu-hog    # Stresses CPU instead of deleting pods
-````
-
-**2. CPU-specific parameters:**
-````yaml
-env:
-  - name: CPU_CORES
-    value: '1'           # Stress 1 CPU core
-  - name: CPU_LOAD
-    value: '100'         # 100% load on that core
-  - name: PODS_AFFECTED_PERC
-    value: '33'          # Affect 1 of 3 pods
-````
-
-**3. Multiple probes:**
-````yaml
-probe:
-  - name: check-service-availability
-    type: httpProbe      # HTTP endpoint check
-  - name: check-pod-status
-    type: cmdProbe       # Command-based check
-````
-
-### Clean Up Previous Experiment
-````bash
-# Delete pod delete chaos engine
-kubectl delete chaosengine pod-delete-observable -n default
-
-# Optional: Clean up completed pods/jobs
-kubectl delete pods -n default -l chaosUID
-kubectl delete jobs -n default -l chaosUID
-````
-
-### Execute CPU Stress Experiment
-
-**Terminal 1: Watch Target Pods**
-````bash
-# Watch pod resource usage (if metrics-server is enabled)
-watch -n 2 'kubectl top pods -l app=chaos-target-app 2>/dev/null || kubectl get pods -l app=chaos-target-app'
-````
-
-**Terminal 2: Execute Chaos**
-````bash
-# Apply CPU stress chaos
-kubectl apply -f chaos-experiments/cpu-stress-experiment.yaml
-
-# Watch execution
-watch -n 2 'kubectl get chaosengine cpu-stress-chaos -n default && echo "" && kubectl get jobs -n default | grep cpu'
-````
-
-### Observe CPU Stress Behavior
-
-Unlike pod deletion where pods are terminated, CPU stress keeps pods running but consumes their CPU resources:
-````bash
-# Check CPU usage on target pods (requires metrics-server)
-kubectl top pods -l app=chaos-target-app
-
-# Check chaos experiment helper pod
-kubectl get pods -n default | grep cpu-hog
-
-# View experiment logs
-kubectl logs -n default -l name=pod-cpu-hog -f
-````
-
-**Expected observations:**
-- Target pods remain in `Running` state (not terminated)
-- One pod shows elevated CPU usage
-- Service continues responding (other pods handle traffic)
-- No pod restarts
-
-### Monitor Service Availability
-
-Test service availability during CPU stress:
-````bash
-# Ensure port-forward is running
-kubectl port-forward svc/chaos-target-service 8080:80 --address 0.0.0.0 &
-
-# Test service availability during chaos
-for i in {1..20}; do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null || echo "000")
-  echo "$(date '+%H:%M:%S') - HTTP $STATUS"
-  sleep 5
-done
-````
-
-**Expected output:**
-````
-18:30:01 - HTTP 200
-18:30:06 - HTTP 200
-18:30:11 - HTTP 200  ← CPU stress running
-18:30:16 - HTTP 200  ← Service still available
-18:30:21 - HTTP 200
-````
-
-Service should remain available because:
-- Only 1 of 3 pods is stressed
-- Resource limits prevent complete CPU monopolization
-- Kubernetes routes traffic to healthy pods
-
-### Wait for Completion
-
-CPU stress runs for 120 seconds:
-````bash
-# Wait for completion
-sleep 130
-
-# Verify completion
-kubectl get chaosengine cpu-stress-chaos -n default
-````
-
----
-
-## Exercise 4: Analyze Automated Results
-
-Now examine the structured results that LitmusChaos automatically generated during both experiments.
+Now examine the structured results that LitmusChaos automatically generated during the experiment.
 
 ### View ChaosResults
 ````bash
@@ -443,9 +312,6 @@ kubectl get chaosresult -n default
 
 # View pod delete results
 kubectl get chaosresult pod-delete-observable-pod-delete -n default -o yaml | less
-
-# View CPU stress results
-kubectl get chaosresult cpu-stress-chaos-pod-cpu-hog -n default -o yaml | less
 ````
 
 ### Extract Key Metrics
@@ -487,9 +353,8 @@ analyze_result() {
   echo ""
 }
 
-# Analyze both experiments
+# Analyze the experiment
 analyze_result "pod-delete-observable-pod-delete" "Pod Delete"
-analyze_result "cpu-stress-chaos-pod-cpu-hog" "CPU Stress"
 
 echo "=== Target Application Status ==="
 kubectl get pods -l app=chaos-target-app -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,RESTARTS:.status.containerStatuses[0].restartCount,AGE:.metadata.creationTimestamp
@@ -509,9 +374,6 @@ Probes are the automated health checks that ran during chaos. Extract probe data
 ````bash
 # Get probe results from pod delete experiment
 kubectl get chaosresult pod-delete-observable-pod-delete -n default -o jsonpath='{.status.probeStatuses}' | jq '.'
-
-# Get probe results from CPU stress experiment
-kubectl get chaosresult cpu-stress-chaos-pod-cpu-hog -n default -o jsonpath='{.status.probeStatuses}' | jq '.'
 ````
 
 **If jq is not available:**
@@ -556,21 +418,11 @@ cat > reports/automated-chaos-results.md <<EOF
 - **Target:** 33% of pods (1 of 3)
 - **Probes:** HTTP availability check (continuous)
 
-### CPU Stress Chaos
-- **Duration:** 120 seconds
-- **CPU Cores:** 1 core at 100% load
-- **Target:** 33% of pods (1 of 3)
-- **Probes:** HTTP availability + pod status check
-
 ## Automated Measurements
 
 ### Pod Delete Results
 - **Verdict:** $(kubectl get chaosresult pod-delete-observable-pod-delete -n default -o jsonpath='{.status.experimentStatus.verdict}' 2>/dev/null || echo "Check manually")
 - **Probe Success Rate:** $(kubectl get chaosresult pod-delete-observable-pod-delete -n default -o jsonpath='{.status.experimentStatus.probeSuccessPercentage}' 2>/dev/null || echo "N/A")%
-
-### CPU Stress Results
-- **Verdict:** $(kubectl get chaosresult cpu-stress-chaos-pod-cpu-hog -n default -o jsonpath='{.status.experimentStatus.verdict}' 2>/dev/null || echo "Check manually")
-- **Probe Success Rate:** $(kubectl get chaosresult cpu-stress-chaos-pod-cpu-hog -n default -o jsonpath='{.status.experimentStatus.probeSuccessPercentage}' 2>/dev/null || echo "N/A")%
 
 ## System Behavior During Chaos
 
@@ -580,14 +432,9 @@ cat > reports/automated-chaos-results.md <<EOF
 - Recovery time: ~10-15 seconds per pod
 
 ### Service Availability
-- Service remained available throughout both experiments
+- Service remained available throughout the experiment
 - HTTP probes confirmed continuous responsiveness
 - Load balanced across healthy pods
-
-### Resource Consumption
-- CPU stress applied to single pod successfully
-- Resource limits prevented complete exhaustion
-- Other pods continued serving traffic normally
 
 ## Key Insights
 
@@ -628,7 +475,7 @@ cat reports/automated-chaos-results.md
 
 ---
 
-## Exercise 5: Compare with Manual Approach
+## Exercise 4: Compare with Manual Approach
 
 Create a direct comparison between your Track 1 manual chaos and Track 2 automated chaos experiences.
 
@@ -998,10 +845,9 @@ git commit -m "Track 2 complete: Automated chaos via YAML
 
 Experiments executed:
 - Pod delete chaos: 90s duration, 10s intervals
-- CPU stress chaos: 120s duration, 1 core at 100%
 
 Results:
-- Both experiments completed successfully
+- Experiment completed successfully
 - ChaosResults generated automatically
 - Probes validated continuous availability
 - Zero manual intervention during execution
@@ -1028,29 +874,27 @@ Reflect on the automated chaos experience and compare it with manual approaches:
 
 2. **What did continuous probes reveal** that manual curl loops couldn't capture?
 
-3. **How would you modify the CPU stress experiment** to make it more challenging or realistic?
-
-4. **What happens if you set `PODS_AFFECTED_PERC` to `100`?** Would that be safe in production?
+3. **What happens if you set `PODS_AFFECTED_PERC` to `100`?** Would that be safe in production?
 
 ### Operational Reflection
 
-5. **Could you run these experiments daily** without disrupting your work? What about hourly?
+4. **Could you run these experiments daily** without disrupting your work? What about hourly?
 
-6. **How would you integrate ChaosEngine YAML** into your CI/CD pipeline?
+5. **How would you integrate ChaosEngine YAML** into your CI/CD pipeline?
 
-7. **What happens if probe success rate drops** from 100% to 70% over several weeks?
+6. **What happens if probe success rate drops** from 100% to 70% over several weeks?
 
-8. **How does Infrastructure as Code for chaos** change team collaboration compared to manual runbooks?
+7. **How does Infrastructure as Code for chaos** change team collaboration compared to manual runbooks?
 
 ### Strategic Reflection
 
-9. **When would you still choose manual chaos** even with automated YAML available?
+8. **When would you still choose manual chaos** even with automated YAML available?
 
-10. **How would you convince a skeptical teammate** that YAML-based chaos is better than Portal UI?
+9. **How would you convince a skeptical teammate** that YAML-based chaos is better than Portal UI?
 
-11. **What additional chaos scenarios** would you add to comprehensively test your application?
+10. **What additional chaos scenarios** would you add to comprehensively test your application?
 
-12. **How does version-controlling chaos experiments** enable better reliability practices?
+11. **How does version-controlling chaos experiments** enable better reliability practices?
 
 ---
 
